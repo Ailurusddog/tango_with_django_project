@@ -8,6 +8,14 @@ django.setup()
 from rango.models import Category, Page
 
 
+def add_page(cat, title, url, views=0):
+    p, created = Page.objects.get_or_create(category=cat, title=title)
+    p.url = url
+    p.views = views
+    p.save()
+    return p
+
+
 def add_cat(name, views=0, likes=0):
     c, created = Category.objects.get_or_create(name=name)
     c.views = views
@@ -16,30 +24,22 @@ def add_cat(name, views=0, likes=0):
     return c
 
 
-def add_page(category, title, url, views=0):
-    p, created = Page.objects.get_or_create(category=category, title=title)
-    p.url = url
-    p.views = views
-    p.save()
-    return p
-
-
 def populate():
     python_pages = [
         {'title': 'Official Python Tutorial',
-         'url': 'https://docs.python.org/3/tutorial/',
+         'url': 'http://docs.python.org/3/tutorial/',
          'views': 128},
         {'title': 'How to Think like a Computer Scientist',
          'url': 'http://www.greenteapress.com/thinkpython/',
          'views': 64},
         {'title': 'Learn Python in 10 Minutes',
-         'url': 'https://www.korokithakis.net/tutorials/python/',
+         'url': 'http://www.korokithakis.net/tutorials/python/',
          'views': 32},
     ]
 
     django_pages = [
         {'title': 'Official Django Tutorial',
-         'url': 'https://docs.djangoproject.com/en/2.2/intro/tutorial01/',
+         'url': 'https://docs.djangoproject.com/en/2.1/intro/tutorial01/',
          'views': 64},
         {'title': 'Django Rocks',
          'url': 'http://www.djangorocks.com/',
@@ -51,14 +51,13 @@ def populate():
 
     other_pages = [
         {'title': 'Bottle',
-         'url': 'https://bottlepy.org/docs/dev/',
+         'url': 'http://bottlepy.org/docs/dev/',
          'views': 16},
         {'title': 'Flask',
-         'url': 'https://flask.palletsprojects.com/',
+         'url': 'http://flask.pocoo.org',
          'views': 32},
     ]
 
-    # 这些值是 tests_chapter5.py 里硬编码检查的
     cats = {
         'Python': {'pages': python_pages, 'views': 128, 'likes': 64},
         'Django': {'pages': django_pages, 'views': 64, 'likes': 32},
@@ -66,15 +65,13 @@ def populate():
     }
 
     for cat_name, cat_data in cats.items():
-        c = add_cat(cat_name, cat_data['views'], cat_data['likes'])
+        c = add_cat(cat_name, views=cat_data['views'], likes=cat_data['likes'])
         for p in cat_data['pages']:
             add_page(c, p['title'], p['url'], p['views'])
 
-    # 打印确认
     for c in Category.objects.all():
-        print(f'{c.name}: views={c.views}, likes={c.likes}')
         for p in Page.objects.filter(category=c):
-            print(f'  - {p.title} ({p.views} views)')
+            print(f'- {c.name}: {p.title} ({p.views} views)')
 
 
 if __name__ == '__main__':
