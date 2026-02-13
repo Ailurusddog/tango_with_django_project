@@ -7,22 +7,64 @@ from django.contrib.auth.decorators import login_required
 from rango.models import Category, Page
 from rango.forms import CategoryForm, PageForm, UserForm, UserProfileForm
 
+from datetime import datetime
+
+
+def _parse_datetime(value: str) -> datetime:
+
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:
+        # Fallback: handle without microseconds
+        return datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+
+
+def visitor_session_handler(request):
+
+    session = request.session
+
+    visits = session.get('visits')
+    last_visit = session.get('last_visit')
+
+    if visits is None or last_visit is None:
+        session['visits'] = 1
+        session['last_visit'] = str(datetime.now())
+        return
+
+    last_visit_time = _parse_datetime(last_visit)
+
+    if (datetime.now() - last_visit_time).days > 0:
+        session['visits'] = int(visits) + 1
+        session['last_visit'] = str(datetime.now())
+    else:
+        # Keep values as-is if less than a day.
+        session['visits'] = int(visits)
+        session['last_visit'] = last_visit
+
 
 def index(request):
     category_list = Category.objects.order_by('-likes')[:5]
     page_list = Page.objects.order_by('-views')[:5]
 
-    context_dict = {}
-    context_dict['boldmessage'] = 'Crunchy, creamy, cookie, candy, cupcake!'
-    context_dict['categories'] = category_list
-    context_dict['pages'] = page_list
+    context_dict = {
+        'boldmessage': 'Crunchy, creamy, cookie, candy, cupcake!',
+        'categories': category_list,
+        'pages': page_list,
+    }
+
+    visitor_session_handler(request)
 
     return render(request, 'rango/index.html', context=context_dict)
 
 
 def about(request):
-    context_dict = {}
-    context_dict['boldmessage'] = 'This tutorial has been put together by Xinhao.'
+    visitor_session_handler(request)
+
+    visits = request.session.get('visits', 1)
+
+    context_dict = {
+        'visits': visits
+    }
     return render(request, 'rango/about.html', context=context_dict)
 
 
@@ -94,8 +136,6 @@ def register(request):
 
         if user_form.is_valid() and profile_form.is_valid():
             user = user_form.save()
-
-            # Hash password properly
             user.set_password(user.password)
             user.save()
 
@@ -143,7 +183,6 @@ def user_login(request):
 
 @login_required(login_url=reverse_lazy('rango:login'))
 def restricted(request):
-    # IMPORTANT: tests expect a restricted.html template that uses inheritance
     return render(request, 'rango/restricted.html')
 
 
